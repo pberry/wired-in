@@ -72,5 +72,5 @@ docs/PROTOCOL.md     the reverse-engineered protocol
 
 ## Status
 
-Built and tested against a simulated sign only. Real hardware verification is
-pending; see the **(unverified)** notes in the protocol doc.
+Verified working with a USB sign (firmware 0.4). The meaning of the firmware's
+`!modeN;` values is still unknown; see docs/PROTOCOL.md.

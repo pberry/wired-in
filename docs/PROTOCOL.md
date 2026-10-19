@@ -2,8 +2,9 @@
 
 Reverse engineered from `Wired In.app` v1.2 (build 8, 2018), specifically
 `Contents/Frameworks/WiredIn.framework` (Objective-C, classes `WISerialSign`,
-`WISerialSignScanner`, `WISignStatus`, `WIBluetoothSign`). Nothing here has been
-verified against hardware yet; items marked **(unverified)** are inferences.
+`WISerialSignScanner`, `WISignStatus`, `WIBluetoothSign`). The serial protocol
+was confirmed against a real USB sign (firmware 0.4, FTDI `cu.usbserial-*`
+port) on 2026-10-19. Items still marked **(unverified)** are inferences.
 
 ## Transport
 
@@ -54,13 +55,16 @@ cancels all queued requests first, so dragging a color picker doesn't back up.
 
 ## Responses (sign → host)
 
-Responses start with `$` and end with `;`.
+Responses start with `$` and end with `;`, followed by a NUL (`0x00`) byte.
+No output is sent on port open (no boot banner).
 
 ### Info
 
 ```
 $WiredIn:<version>/uid:<unique id>;
 ```
+
+Captured: `$WiredIn:0.4/uid:2938475202;\0`
 
 Strip `$` and `;`, split on `/`. Component 0, split on `:` must have first
 element `WiredIn`; the last element is the firmware version (parsed as float).
@@ -70,8 +74,11 @@ Max packet length the app accepted: 30 bytes.
 ### Status
 
 ```
-$c:<r>,<g>,<b>/o:<0|1>/b:<brightness>/m:<mode>;
+$c: <r>, <g>, <b>/o: <0|1>/b: <brightness>/m: <mode>;
 ```
+
+Captured: `$c: 255, 000, 000/o: 1/b: 255/m: 0;\0` — note the space after every
+`:` and `,`, and zero-padded three-digit values.
 
 Strip `$` and `;`, split on `/` (needs ≥ 3 components; the 4th, mode, is
 optional). Each component is `key:value`:
@@ -81,10 +88,10 @@ optional). Each component is `key:value`:
 - `b:` — brightness 0–255
 - `m:` — mode (integer)
 
-The app's packet matcher required a status packet to be **34–35 bytes**, which
-is longer than the minimal format above (29 bytes with zero-padded values). The
-firmware probably pads or adds fields **(unverified)**; this rebuild parses
-leniently and ignores unknown components.
+The app's packet matcher required a status packet to be **34–35 bytes**. The
+spaces explain this: the captured packet is 35 bytes (excluding the NUL). This
+rebuild trims whitespace and ignores unknown components rather than relying on
+length.
 
 ## Other integrations in the original app
 

@@ -6,6 +6,11 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+- Protocol documentation confirmed against real hardware (firmware 0.4):
+  responses include spaces after `:`/`,` and a trailing NUL byte.
+- Added tests using packets captured from a real sign.
+
 ### Removed
 - Slack and IFTTT integrations, and the Keychain helper they used.
 - Slack emoji field on presets (existing `slackEmoji` keys in saved presets

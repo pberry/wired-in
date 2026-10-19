@@ -95,6 +95,26 @@ import Testing
     }
 }
 
+/// Bytes captured from a real sign (firmware 0.4) on 2026-10-19.
+@Suite struct HardwareCaptureTests {
+    static let info = Data("$WiredIn:0.4/uid:2938475202;\0".utf8)
+    static let status = Data("$c: 255, 000, 000/o: 1/b: 255/m: 0;\0".utf8)
+
+    @Test func parsesCapturedPackets() throws {
+        var framer = PacketFramer()
+        let packets = framer.append(Self.info + Self.status)
+        #expect(packets.count == 2)
+        #expect(SignResponse(packets[0]) == .info(SignInfo(version: 0.4, uniqueIdentifier: "2938475202")))
+        let status = try #require(SignStatus(response: packets[1]))
+        #expect(status == SignStatus(color: .red, brightness: 1, isOn: true, mode: 0))
+    }
+
+    @Test func capturedStatusLengthMatchesOriginalMatcher() {
+        // The 2018 app only accepted status packets of 34–35 bytes; the NUL is outside the packet.
+        #expect(Self.status.count - 1 == 35)
+    }
+}
+
 @Suite struct ColorTests {
     @Test func hexRoundTrip() {
         #expect(SignColor(hex: "#FF8000")?.hex == "#FF8000")

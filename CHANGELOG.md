@@ -6,6 +6,11 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Removed
+- Slack and IFTTT integrations, and the Keychain helper they used.
+- Slack emoji field on presets (existing `slackEmoji` keys in saved presets
+  are ignored).
+
 ## [0.1.0] - 2026-10-19
 
 ### Added

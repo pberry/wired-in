@@ -6,7 +6,8 @@ The original `Wired In.app` (v1.2, 2018) is Intel-only, built against the
 macOS 10.14 SDK, and depends on a dead OAuth relay and Crashlytics. This
 project reverse engineered its sign protocol (see
 [docs/PROTOCOL.md](docs/PROTOCOL.md)) and reimplements it in Swift with no
-third-party dependencies.
+third-party dependencies. The original's Slack and IFTTT integrations are
+intentionally not included.
 
 ## Features
 
@@ -14,7 +15,6 @@ third-party dependencies.
 - Presets with name, emoji, color and on/off; drag-free one-click switching
 - Live color picker and brightness slider
 - Menu bar extra and global hotkeys (⌃⌥⌘1–9 presets, ⌃⌥⌘0 off, ⌃⌥⌘W window)
-- Slack status updates (bring your own user token) and IFTTT webhooks
 - `wiredin://` URLs, compatible with the original shared preset links
 - `wired` command line tool
 - Launch at login
@@ -60,23 +60,10 @@ CLI commands while the app holds the serial port open.
 
 Right-click a preset → **Copy Share Link** to share one.
 
-## Slack
-
-The original app's OAuth redirect (`wiredin-auth-redirect.herokuapp.com`) is
-gone, so you use your own Slack app:
-
-1. Create an app at <https://api.slack.com/apps>.
-2. Under **OAuth & Permissions**, add the **user** scope `users.profile:write`.
-3. Install it to your workspace and copy the **User OAuth Token** (`xoxp-…`).
-4. Paste it into Settings → Integrations. Give each preset a Slack emoji
-   such as `:headphones:`.
-
-Tokens are stored in the Keychain.
-
 ## Layout
 
 ```
-Sources/WiredInKit   protocol, serial/BLE transports, presets, integrations
+Sources/WiredInKit   protocol, serial/BLE transports, presets
 Sources/WiredIn      SwiftUI app
 Sources/wired        CLI
 Tests/               swift-testing suite (uses a simulated sign)

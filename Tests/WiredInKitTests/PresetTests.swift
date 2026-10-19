@@ -45,6 +45,12 @@ import Testing
         #expect(Preset.find("nothing", in: presets) == nil)
     }
 
+    @Test func decodesPresetsSavedWithSlackEmoji() throws {
+        let json = #"[{"id":"3271C2AC-84F1-4949-BEDB-A135E4A0847E","name":"Lunch","emoji":"🥪","isOn":true,"slackEmoji":":sandwich:","color":{"red":1,"green":1,"blue":1}}]"#
+        let presets = try JSONDecoder().decode([Preset].self, from: Data(json.utf8))
+        #expect(presets.map(\.name) == ["Lunch"])
+    }
+
     @Test func storeRoundTrip() throws {
         let url = FileManager.default.temporaryDirectory.appending(path: "wiredin-\(UUID())/presets.json")
         defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
@@ -53,43 +59,6 @@ import Testing
         let custom = [Preset(name: "Lunch", emoji: "🥪", color: .white)]
         try store.save(custom)
         #expect(store.load() == custom)
-    }
-}
-
-@Suite struct IntegrationTests {
-    let preset = Preset(name: "Meeting", emoji: "📅", color: SignColor(red: 1, green: 0.5, blue: 0), slackEmoji: ":calendar:")
-
-    @Test func slackRequest() throws {
-        let request = try #require(SlackIntegration(token: "xoxp-test").request(for: preset))
-        #expect(request.url?.absoluteString == "https://slack.com/api/users.profile.set")
-        #expect(request.value(forHTTPHeaderField: "Authorization") == "Bearer xoxp-test")
-        let body = try #require(JSONSerialization.jsonObject(with: request.httpBody!) as? [String: [String: Any]])
-        #expect(body["profile"]?["status_text"] as? String == "Meeting")
-        #expect(body["profile"]?["status_emoji"] as? String == ":calendar:")
-    }
-
-    @Test func slackClearsStatusWhenOff() throws {
-        let request = try #require(SlackIntegration(token: "t").request(for: nil))
-        let body = try #require(JSONSerialization.jsonObject(with: request.httpBody!) as? [String: [String: Any]])
-        #expect(body["profile"]?["status_text"] as? String == "")
-    }
-
-    @Test func slackValidatesOkFlag() {
-        let slack = SlackIntegration(token: "t")
-        #expect(throws: Never.self) { try slack.validate(Data(#"{"ok":true}"#.utf8)) }
-        #expect(throws: SignError.io("Slack: invalid_auth")) { try slack.validate(Data(#"{"ok":false,"error":"invalid_auth"}"#.utf8)) }
-    }
-
-    @Test func noTokenNoRequest() {
-        #expect(SlackIntegration(token: "").request(for: preset) == nil)
-        #expect(IFTTTIntegration(key: "k", event: " ").request(for: preset) == nil)
-    }
-
-    @Test func iftttRequest() throws {
-        let request = try #require(IFTTTIntegration(key: "abc", event: "wired_in").request(for: preset))
-        #expect(request.url?.absoluteString == "https://maker.ifttt.com/trigger/wired_in/with/key/abc")
-        let body = try #require(JSONSerialization.jsonObject(with: request.httpBody!) as? [String: String])
-        #expect(body == ["value1": "Meeting", "value2": "📅", "value3": "#FF7F00"])
     }
 }
 

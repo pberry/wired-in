@@ -55,7 +55,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 </plist>
 PLIST
 
-# Ad-hoc signature so launch-at-login and Keychain access work locally.
+# Ad-hoc signature so launch-at-login works locally.
 codesign --force --sign - "$APP/Contents/MacOS/wired"
 codesign --force --sign - "$APP"
 

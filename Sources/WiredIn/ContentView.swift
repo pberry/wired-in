@@ -155,10 +155,6 @@ struct PresetEditor: View {
                 set: { preset.color = SignColor(NSColor($0)) }
             ), supportsOpacity: false)
             Toggle("Sign on", isOn: $preset.isOn)
-            TextField("Slack emoji", text: Binding(
-                get: { preset.slackEmoji ?? "" },
-                set: { preset.slackEmoji = $0.isEmpty ? nil : $0 }
-            ), prompt: Text(":headphones:"))
         }
         .formStyle(.grouped)
         .frame(width: 340)

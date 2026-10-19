@@ -27,7 +27,7 @@ final class SignEntry: Identifiable {
     }
 }
 
-/// App-wide state: connected signs, presets, and integrations.
+/// App-wide state: connected signs and presets.
 @MainActor
 @Observable
 final class SignController {
@@ -46,9 +46,6 @@ final class SignController {
         didSet { UserDefaults.standard.set(brightness, forKey: Keys.brightness) }
     }
 
-    var slackToken: String { didSet { Keychain.set(slackToken, for: Keys.slackToken) } }
-    var iftttKey: String { didSet { Keychain.set(iftttKey, for: Keys.iftttKey) } }
-    var iftttEvent: String { didSet { UserDefaults.standard.set(iftttEvent, forKey: Keys.iftttEvent) } }
     var bluetoothEnabled: Bool {
         didSet {
             UserDefaults.standard.set(bluetoothEnabled, forKey: Keys.bluetooth)
@@ -71,9 +68,6 @@ final class SignController {
 
     private enum Keys {
         static let brightness = "DefaultBrightness"
-        static let slackToken = "slack-token"
-        static let iftttKey = "ifttt-key"
-        static let iftttEvent = "IFTTTEvent"
         static let bluetooth = "BluetoothEnabled"
     }
 
@@ -86,9 +80,6 @@ final class SignController {
         let defaults = UserDefaults.standard
         presets = store.load()
         brightness = defaults.object(forKey: Keys.brightness) as? Double ?? 1
-        slackToken = Keychain.string(for: Keys.slackToken) ?? ""
-        iftttKey = Keychain.string(for: Keys.iftttKey) ?? ""
-        iftttEvent = defaults.string(forKey: Keys.iftttEvent) ?? "wired_in_status"
         bluetoothEnabled = defaults.bool(forKey: Keys.bluetooth)
     }
 
@@ -179,14 +170,12 @@ final class SignController {
             try await session.setBrightness(brightness)
             try await session.setPower(preset.isOn)
         }
-        publishToIntegrations(preset.isOn ? preset : nil)
     }
 
     func turnOff() {
         isOn = false
         activePresetID = nil
         broadcast { try await $0.setPower(false) }
-        publishToIntegrations(nil)
     }
 
     func setPower(_ on: Bool) {
@@ -254,20 +243,6 @@ final class SignController {
 
     func preset(matching query: String) -> Preset? {
         Preset.find(query.removingPercentEncoding ?? query, in: presets)
-    }
-
-    // MARK: - Integrations
-
-    private func publishToIntegrations(_ preset: Preset?) {
-        let integrations: [StatusIntegration] = [
-            SlackIntegration(token: slackToken),
-            IFTTTIntegration(key: iftttKey, event: iftttEvent),
-        ]
-        for integration in integrations where integration.request(for: preset) != nil {
-            Task {
-                do { try await integration.publish(preset) } catch { lastError = error.localizedDescription }
-            }
-        }
     }
 
     // MARK: - URLs

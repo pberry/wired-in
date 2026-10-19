@@ -1,35 +1,31 @@
 import Foundation
 
-/// A named status: what the sign shows and what integrations announce.
+/// A named status: what the sign shows.
 public struct Preset: Codable, Hashable, Sendable, Identifiable {
     public var id: UUID
     public var name: String
     public var emoji: String
     public var color: SignColor
     public var isOn: Bool
-    /// Slack wants `:shortcode:` emoji, not Unicode. Optional.
-    public var slackEmoji: String?
 
     public init(
         id: UUID = UUID(),
         name: String,
         emoji: String,
         color: SignColor,
-        isOn: Bool = true,
-        slackEmoji: String? = nil
+        isOn: Bool = true
     ) {
         self.id = id
         self.name = name
         self.emoji = emoji
         self.color = color
         self.isOn = isOn
-        self.slackEmoji = slackEmoji
     }
 
     public static let defaults: [Preset] = [
-        Preset(name: "Available", emoji: "👤", color: SignColor(red: 0.098, green: 1, blue: 0), slackEmoji: ":large_green_circle:"),
-        Preset(name: "Meeting", emoji: "📅", color: SignColor(red: 1, green: 0.75, blue: 0), slackEmoji: ":calendar:"),
-        Preset(name: "Wired In", emoji: "🎧", color: SignColor(red: 1, green: 0, blue: 0), slackEmoji: ":headphones:"),
+        Preset(name: "Available", emoji: "👤", color: SignColor(red: 0.098, green: 1, blue: 0)),
+        Preset(name: "Meeting", emoji: "📅", color: SignColor(red: 1, green: 0.75, blue: 0)),
+        Preset(name: "Wired In", emoji: "🎧", color: SignColor(red: 1, green: 0, blue: 0)),
     ]
 
     /// Case-insensitive lookup by name, emoji, or hex color, as the original CLI did.

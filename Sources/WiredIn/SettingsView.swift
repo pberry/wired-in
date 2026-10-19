@@ -6,7 +6,6 @@ struct SettingsView: View {
         TabView {
             GeneralSettings().tabItem { Label("General", systemImage: "gearshape") }
             DevicesSettings().tabItem { Label("Devices", systemImage: "cable.connector") }
-            IntegrationsSettings().tabItem { Label("Integrations", systemImage: "link") }
         }
         .frame(width: 480)
     }
@@ -80,32 +79,6 @@ private struct DevicesSettings: View {
                 Text("Advanced")
             } footer: {
                 Text("The firmware accepts `!mode0;`–`!mode9;`, but what each mode does is unknown.")
-            }
-        }
-        .formStyle(.grouped)
-    }
-}
-
-private struct IntegrationsSettings: View {
-    @Environment(SignController.self) private var controller
-
-    var body: some View {
-        @Bindable var controller = controller
-        Form {
-            Section {
-                SecureField("User token (xoxp-…)", text: $controller.slackToken)
-            } header: {
-                Text("Slack")
-            } footer: {
-                Text("Create a Slack app at api.slack.com/apps, add the `users.profile:write` user scope, install it to your workspace and paste the User OAuth Token. Set a Slack emoji on each preset.")
-            }
-            Section {
-                SecureField("Webhooks key", text: $controller.iftttKey)
-                TextField("Event name", text: $controller.iftttEvent)
-            } header: {
-                Text("IFTTT")
-            } footer: {
-                Text("Fires on every status change with value1 = name, value2 = emoji, value3 = hex color.")
             }
         }
         .formStyle(.grouped)

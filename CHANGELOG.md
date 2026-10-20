@@ -14,10 +14,6 @@ All notable changes to this project are documented here. The format follows
   firmware supports are 0 and 1.
 - `wired mode` takes `solid` or `cycle` instead of 0–9.
 
-### Added
-- Hardware and history notes in docs/PROTOCOL.md (Kickstarter details,
-  bootloader probe results, likely firmware ancestor).
-
 ### Fixed
 - The app now follows changes made with the sign's own on/off button, which
   the firmware reports with an unprompted status packet. `SignSession`'s
@@ -26,6 +22,8 @@ All notable changes to this project are documented here. The format follows
 ### Added
 - Color cycle toggle in the main window and menu bar. Leaving the cycle, or
   applying a preset or color, switches back to solid and re-sends the color.
+- Hardware and history notes in docs/PROTOCOL.md (Kickstarter details,
+  bootloader probe results, likely firmware ancestor).
 
 ### Removed
 - The 0–9 firmware mode picker in Settings → Devices.

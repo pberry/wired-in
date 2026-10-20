@@ -76,6 +76,7 @@ final class SignController {
     private var scanTask: Task<Void, Never>?
     private var colorTask: Task<Void, Never>?
     private var bluetooth: BluetoothScanner?
+    private var controlServer: ControlServer?
 
     private init() {
         let defaults = UserDefaults.standard
@@ -90,12 +91,25 @@ final class SignController {
     func start() {
         guard scanTask == nil else { return }
         updateBluetooth()
+        do {
+            controlServer = try ControlServer { [weak self] request in
+                await self?.perform(request) ?? ControlResponse(error: "Wired In is shutting down.")
+            }
+        } catch {
+            lastError = "The wired command can't reach the app: \(error.localizedDescription)"
+        }
         scanTask = Task { [weak self] in
             while !Task.isCancelled {
                 await self?.scanSerialPorts()
                 try? await Task.sleep(for: .seconds(3))
             }
         }
+    }
+
+    /// Removes the control socket so the CLI goes back to talking to signs directly.
+    func stop() {
+        controlServer?.stop()
+        controlServer = nil
     }
 
     func scanSerialPorts() async {
@@ -174,14 +188,18 @@ final class SignController {
     }
 
     // MARK: - Control
+    //
+    // Each command returns a task that finishes once every sign has answered, so the
+    // control socket can report the result. UI callers ignore it.
 
-    func apply(_ preset: Preset) {
+    @discardableResult
+    func apply(_ preset: Preset) -> Task<Void, Never> {
         activePresetID = preset.id
         color = preset.color
         isOn = preset.isOn
         let wasCycling = isCycling
         isCycling = false
-        broadcast { [brightness] session in
+        return broadcast { [brightness] session in
             if wasCycling { try await session.setMode(.solid) }
             try await session.setColor(preset.color)
             try await session.setBrightness(brightness)
@@ -189,49 +207,56 @@ final class SignController {
         }
     }
 
-    func turnOff() {
+    @discardableResult
+    func turnOff() -> Task<Void, Never> {
         isOn = false
         activePresetID = nil
-        broadcast { try await $0.setPower(false) }
+        return broadcast { try await $0.setPower(false) }
     }
 
-    func setPower(_ on: Bool) {
+    @discardableResult
+    func setPower(_ on: Bool) -> Task<Void, Never> {
         if on, let preset = activePreset {
-            apply(preset)
+            return apply(preset)
         } else if on {
             isOn = true
-            broadcast { try await $0.setPower(true) }
+            return broadcast { try await $0.setPower(true) }
         } else {
-            turnOff()
+            return turnOff()
         }
     }
 
     /// Live color changes (e.g. dragging a picker). Coalesced so the serial line doesn't back up.
-    func setColor(_ newColor: SignColor) {
+    @discardableResult
+    func setColor(_ newColor: SignColor) -> Task<Void, Never> {
         color = newColor
         activePresetID = nil
         colorTask?.cancel()
         let wasCycling = isCycling
         isCycling = false
-        colorTask = Task {
+        let task = Task {
             try? await Task.sleep(for: .milliseconds(40))
             guard !Task.isCancelled else { return }
-            broadcast { session in
+            await broadcast { session in
                 if wasCycling { try await session.setMode(.solid) }
                 try await session.setColor(newColor)
-            }
+            }.value
         }
+        colorTask = task
+        return task
     }
 
-    func commitBrightness() {
+    @discardableResult
+    func commitBrightness() -> Task<Void, Never> {
         broadcast { [brightness] in try await $0.setBrightness(brightness) }
     }
 
     /// Leaving the cycle freezes the sign on a random color, so the chosen color is re-sent.
-    func setCycling(_ cycling: Bool) {
+    @discardableResult
+    func setCycling(_ cycling: Bool) -> Task<Void, Never> {
         isCycling = cycling
         if cycling { activePresetID = nil }
-        broadcast { [color] session in
+        return broadcast { [color] session in
             if cycling {
                 try await session.setMode(.colorCycle)
             } else {
@@ -241,10 +266,16 @@ final class SignController {
         }
     }
 
-    /// Runs commands against every sign. BLE signs don't answer, so those are fire-and-forget.
-    private func broadcast(_ commands: @escaping @Sendable (SignSession) async throws -> Void) {
-        for sign in signs {
-            Task { await push(to: sign.session, kind: sign.kind, commands) }
+    /// Runs commands against every sign concurrently. BLE signs don't answer, so
+    /// their timeouts are ignored.
+    private func broadcast(_ commands: @escaping @Sendable (SignSession) async throws -> Void) -> Task<Void, Never> {
+        let targets = signs.map { ($0.session, $0.kind) }
+        return Task {
+            await withTaskGroup(of: Void.self) { group in
+                for (session, kind) in targets {
+                    group.addTask { await self.push(to: session, kind: kind, commands) }
+                }
+            }
         }
     }
 
@@ -259,6 +290,42 @@ final class SignController {
         } catch {
             lastError = error.localizedDescription
         }
+    }
+
+    // MARK: - Control socket
+
+    /// Performs a request from the `wired` CLI and reports every sign's resulting state.
+    func perform(_ request: ControlRequest) async -> ControlResponse {
+        switch request {
+        case .list:
+            break
+        case .status:
+            await withTaskGroup(of: Void.self) { group in
+                for sign in signs where sign.kind == .serial {
+                    group.addTask { _ = try? await sign.session.status() }
+                }
+            }
+        case .power(let on):
+            await setPower(on).value
+        case .color(let color):
+            await setColor(color).value
+        case .brightness(let value):
+            brightness = value
+            await commitBrightness().value
+        case .mode(let mode):
+            await setCycling(mode == .colorCycle).value
+        case .preset(let query):
+            guard let preset = preset(matching: query) else {
+                return ControlResponse(error: "Could not find preset matching '\(query)'.")
+            }
+            await apply(preset).value
+        }
+        var reports: [SignReport] = []
+        for sign in signs {
+            let status = await sign.session.lastStatus
+            reports.append(SignReport(name: sign.name, id: sign.id, firmware: sign.info.version, status: status))
+        }
+        return ControlResponse(signs: reports)
     }
 
     // MARK: - Presets

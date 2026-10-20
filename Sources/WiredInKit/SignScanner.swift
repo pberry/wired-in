@@ -15,17 +15,23 @@ public struct ConnectedSign: Sendable, Identifiable {
 }
 
 public enum SignScanner {
-    /// Opens a port and asks it to identify. Returns nil if it isn't a sign.
-    public static func probe(path: String, timeout: Duration = .milliseconds(1500)) async -> ConnectedSign? {
-        guard let port = try? SerialPort(path: path) else { return nil }
+    /// Opens a port and asks it to identify. Throws `SignError.portBusy` if another
+    /// program has it open, or `SignError.notASign` if nothing answers.
+    public static func connect(path: String, timeout: Duration = .milliseconds(1500)) async throws -> ConnectedSign {
+        let port = try SerialPort(path: path)
         let session = SignSession(transport: port)
         do {
             let info = try await session.identify(timeout: timeout)
             return ConnectedSign(name: port.name, info: info, session: session)
         } catch {
             await session.close()
-            return nil
+            throw error
         }
+    }
+
+    /// Like `connect`, but returns nil for any failure.
+    public static func probe(path: String, timeout: Duration = .milliseconds(1500)) async -> ConnectedSign? {
+        try? await connect(path: path, timeout: timeout)
     }
 
     /// Probes all candidate serial ports concurrently.

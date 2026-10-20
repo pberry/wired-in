@@ -1,6 +1,9 @@
 import Foundation
 
 /// A POSIX serial port configured for the Wired In sign (57600 8N1, raw).
+///
+/// Ports are opened in exclusive mode (`TIOCEXCL`) so the app and the CLI can't
+/// both read the sign's replies; the second opener gets `SignError.portBusy`.
 public final class SerialPort: SignTransport, @unchecked Sendable {
     public static let baudRate: speed_t = 57600
 
@@ -20,7 +23,14 @@ public final class SerialPort: SignTransport, @unchecked Sendable {
     public init(path: String) throws {
         self.path = path
         let fd = open(path, O_RDWR | O_NOCTTY | O_NONBLOCK)
-        guard fd >= 0 else { throw SignError.io("Could not open \(path): \(String(cString: strerror(errno)))") }
+        guard fd >= 0 else {
+            if errno == EBUSY { throw SignError.portBusy(path) }
+            throw SignError.io("Could not open \(path): \(String(cString: strerror(errno)))")
+        }
+        guard ioctl(fd, TIOCEXCL) == 0 else {
+            Darwin.close(fd)
+            throw SignError.io("Could not lock \(path): \(String(cString: strerror(errno)))")
+        }
 
         var options = termios()
         guard tcgetattr(fd, &options) == 0 else {

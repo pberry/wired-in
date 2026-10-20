@@ -13,6 +13,8 @@ public enum SignError: Error, Equatable, LocalizedError {
     case timeout
     case notASign
     case closed
+    /// Another program (usually the Wired In app or `wired`) has the port open.
+    case portBusy(String)
     case io(String)
 
     public var errorDescription: String? {
@@ -20,6 +22,7 @@ public enum SignError: Error, Equatable, LocalizedError {
         case .timeout: "The sign did not respond in time."
         case .notASign: "The device did not identify as a Wired In sign."
         case .closed: "The connection to the sign is closed."
+        case .portBusy(let path): "\(path) is in use by another program."
         case .io(let message): message
         }
     }

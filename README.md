@@ -48,8 +48,13 @@ swift run wired off
 
 The app bundle also contains `Contents/MacOS/wired`; symlink it onto your PATH
 (Settings → General shows the exact command). The CLI and the app share
-presets (`~/Library/Application Support/Wired In/presets.json`). Avoid running
-CLI commands while the app holds the serial port open.
+presets (`~/Library/Application Support/Wired In/presets.json`).
+
+Only one program can have the sign's serial port open at a time. While the app
+is running, `wired` sends its commands to the app over a local socket
+(`~/Library/Application Support/Wired In/control.sock`), so the app's window
+stays in sync. When the app isn't running, `wired` talks to the sign directly.
+`--port` and `raw` always go direct, so they need the app to be closed.
 
 ## URL scheme
 

@@ -6,6 +6,12 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+- The CLI and the app no longer fight over the serial port (#4). Ports are
+  opened exclusively (`TIOCEXCL`); a second opener gets `SignError.portBusy`.
+  While the app runs, `wired` routes commands through it over a Unix socket
+  (`ControlServer` / `ControlClient`) and prints the app's results.
+
 ## [0.2.0] - 2026-10-19
 
 ### Changed

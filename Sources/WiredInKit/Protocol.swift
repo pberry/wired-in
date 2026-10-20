@@ -52,7 +52,7 @@ public enum SignTransportKind: String, Codable, Sendable {
 }
 
 /// Firmware display modes. Confirmed on firmware 0.4; other values are ignored by the sign.
-public enum SignMode: Int, CaseIterable, Sendable {
+public enum SignMode: Int, CaseIterable, Codable, Sendable {
     /// Shows the color set with `!rgb`.
     case solid = 0
     /// Cycles quickly through the colors. Switching back to `.solid` leaves the
@@ -134,7 +134,7 @@ public struct SignInfo: Equatable, Sendable {
 }
 
 /// Sign state returned by `!stat;` and by every set-command.
-public struct SignStatus: Equatable, Sendable {
+public struct SignStatus: Codable, Equatable, Sendable {
     public var color: SignColor
     /// 0.0–1.0
     public var brightness: Double

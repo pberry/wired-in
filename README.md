@@ -75,3 +75,8 @@ docs/PROTOCOL.md     the reverse-engineered protocol
 ## Status
 
 Verified working with a USB sign (firmware 0.4).
+
+## License
+
+MIT, see [LICENSE](LICENSE). The original 2018 Wired In app is not included
+in this repository.

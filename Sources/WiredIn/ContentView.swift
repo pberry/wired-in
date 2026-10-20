@@ -96,13 +96,7 @@ struct StatusHeader: View {
             HStack {
                 ColorPicker("Color", selection: Binding(
                     get: { Color(nsColor: controller.displayColor.nsColor) },
-                    set: { new in
-                        // The picker hands back the colors it's given (lossily, via another
-                        // color space). Treating those echoes as picks would end the cycle.
-                        let picked = SignColor(NSColor(new))
-                        guard !picked.isClose(to: SignColor(controller.displayColor.nsColor)) else { return }
-                        controller.setColor(picked)
-                    }
+                    set: { controller.setColor(SignColor(NSColor($0))) }
                 ), supportsOpacity: false)
                 .labelsHidden()
                 Image(systemName: "sun.min")

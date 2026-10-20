@@ -13,12 +13,6 @@ All notable changes to this project are documented here. The format follows
   Your chosen color is kept and re-sent when you leave the cycle.
 
 ### Fixed
-- Mirroring the cycle color stopped the cycle: the color picker reported the
-  colors it was shown as new picks, which switched the sign back to solid.
-  Picks within 2/255 per channel of the displayed color are now ignored
-  (`SignColor.isClose(to:)`).
-
-### Fixed
 - The CLI and the app no longer fight over the serial port (#4). Ports are
   opened exclusively (`TIOCEXCL`); a second opener gets `SignError.portBusy`.
   While the app runs, `wired` routes commands through it over a Unix socket

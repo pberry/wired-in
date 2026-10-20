@@ -124,12 +124,6 @@ import Testing
         #expect(SignColor(hex: "00ff00") == .green)
         #expect(SignColor(hex: "nope") == nil)
     }
-
-    @Test func closeness() {
-        let color = SignColor(red255: 100, green255: 0, blue255: 255)
-        #expect(color.isClose(to: SignColor(red255: 102, green255: 1, blue255: 253)))
-        #expect(!color.isClose(to: SignColor(red255: 103, green255: 0, blue255: 255)))
-    }
 }
 
 @Suite struct SerialPortTests {

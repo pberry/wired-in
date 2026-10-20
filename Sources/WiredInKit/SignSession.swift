@@ -138,16 +138,6 @@ public actor SignSession {
         try await statusRequest(.mode(mode), timeout: timeout)
     }
 
-    /// Requests status repeatedly until the calling task is cancelled or the session
-    /// closes. Replies are published through `statusUpdates`. Used to follow the
-    /// color cycle, which the sign only reveals in status packets.
-    public func pollStatus(every interval: Duration, timeout: Duration = .milliseconds(200)) async {
-        while !Task.isCancelled, !isClosed {
-            _ = try? await status(timeout: timeout)
-            try? await Task.sleep(for: interval)
-        }
-    }
-
     /// Fires a command without waiting for the reply (BLE writes are not acknowledged).
     public func send(_ command: SignCommand) throws {
         guard !isClosed else { throw SignError.closed }

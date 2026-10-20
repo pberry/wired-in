@@ -94,10 +94,17 @@ struct StatusHeader: View {
                     .labelsHidden()
             }
             HStack {
-                SignColorWell(color: controller.displayColor, isLive: controller.isCycling) {
-                    controller.setColor($0)
-                }
-                .frame(width: 38, height: 24)
+                ColorPicker("Color", selection: Binding(
+                    get: { Color(nsColor: controller.displayColor.nsColor) },
+                    set: { new in
+                        // The picker hands back the colors it's given (lossily, via another
+                        // color space). Treating those echoes as picks would end the cycle.
+                        let picked = SignColor(NSColor(new))
+                        guard !picked.isClose(to: SignColor(controller.displayColor.nsColor)) else { return }
+                        controller.setColor(picked)
+                    }
+                ), supportsOpacity: false)
+                .labelsHidden()
                 Image(systemName: "sun.min")
                 Slider(value: $controller.brightness, in: 0.05...1) { editing in
                     if !editing { controller.commitBrightness() }
@@ -124,55 +131,6 @@ struct StatusHeader: View {
         case 0: controller.isScanning ? "Looking for signs…" : "No sign connected"
         case 1: controller.signs[0].name
         default: "\(controller.signs.count) signs connected"
-        }
-    }
-}
-
-/// A color well that reports only the user's picks.
-///
-/// SwiftUI's ColorPicker hands back colors set from code, and while the color
-/// panel is attached it does so late, after the cycle has moved on, so those
-/// echoes looked like picks and ended the cycle. Here the well lets go of the
-/// panel when live updates start, and stops following them if the user opens
-/// the panel mid-cycle, so the panel holds still while they pick.
-struct SignColorWell: NSViewRepresentable {
-    var color: SignColor
-    /// True while `color` changes on its own (the sign is cycling).
-    var isLive: Bool
-    var onPick: (SignColor) -> Void
-
-    func makeCoordinator() -> Coordinator { Coordinator() }
-
-    func makeNSView(context: Context) -> NSColorWell {
-        let well = NSColorWell(style: .minimal)
-        well.supportsAlpha = false
-        well.target = context.coordinator
-        well.action = #selector(Coordinator.picked(_:))
-        return well
-    }
-
-    func updateNSView(_ well: NSColorWell, context: Context) {
-        let coordinator = context.coordinator
-        coordinator.onPick = onPick
-        if isLive, !coordinator.wasLive, well.isActive { well.deactivate() }
-        coordinator.wasLive = isLive
-        guard !(isLive && well.isActive) else { return }
-        coordinator.shown = color
-        well.color = color.nsColor
-    }
-
-    @MainActor
-    final class Coordinator: NSObject {
-        var onPick: (SignColor) -> Void = { _ in }
-        var wasLive = false
-        /// The last color set from code; the panel echoes it when it attaches.
-        var shown: SignColor?
-
-        @objc func picked(_ well: NSColorWell) {
-            let picked = SignColor(well.color)
-            if let shown, picked.isClose(to: SignColor(shown.nsColor)) { return }
-            shown = picked
-            onPick(picked)
         }
     }
 }

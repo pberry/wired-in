@@ -126,3 +126,25 @@ length.
   Latin-1); the rebuild repairs that on import.
 - **Default presets:** Available, Meeting, Wired In.
 - **Hotkeys:** global sign-off, window focus, per-preset.
+
+## Hardware and history
+
+- Kickstarter: "Wired In - Wireless Productivity Sign With Arduino & HomeKit",
+  May–June 2015, by Josh Howland, Caleb Hicks and Andrew Madsen (Salt Lake City).
+  The campaign promised a "Fully Open Arduino Controller" and open-source SDKs;
+  no firmware source has been found published (searched GitHub, Product Hunt and
+  archived copies of the campaign and wearewired.in in October 2026).
+- USB version: powered over USB; the serial chip is an FTDI FT231X. The button
+  next to the USB port is a firmware-handled power toggle, not a reset.
+  Neither DTR nor RTS resets the microcontroller, and no STK500 (Arduino)
+  bootloader answered at 19200/57600/115200, so the flash could not be read
+  over USB. The microcontroller model is unknown.
+- Bluetooth version: battery powered with an on/off switch. The original
+  app's BLE code and the `RFduino` workarounds below suggest it used an RFduino.
+- Likely firmware ancestor: Andrew Madsen's
+  [ArduinoRequestResponse](https://github.com/armadsen/ArduinoRequestResponse)
+  (2015), the Arduino companion to ORSSerialPort's RequestResponseDemo. It uses
+  the same 57600 baud, the LGPL `Packetizer` library framing packets with a start
+  character and `;`, RFduino compatibility shims, and a debounced button that
+  toggles the LED. Wired In appears to swap the roles of the start characters:
+  commands start with `!` and replies with `$`.

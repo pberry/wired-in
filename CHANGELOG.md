@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-19
+
 ### Changed
 - Protocol documentation confirmed against real hardware (firmware 0.4):
   responses include spaces after `:`/`,` and a trailing NUL byte.
@@ -46,3 +48,7 @@ All notable changes to this project are documented here. The format follows
 - `wired` command line tool.
 - `scripts/build-app.sh` to assemble and ad-hoc sign the `.app` bundle.
 - swift-testing suite with a simulated sign.
+
+[Unreleased]: https://github.com/pberry/wired-in/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/pberry/wired-in/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/pberry/wired-in/releases/tag/v0.1.0

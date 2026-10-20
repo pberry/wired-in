@@ -84,7 +84,7 @@ struct StatusHeader: View {
                     .frame(width: 44, height: 44)
                     .shadow(color: controller.isOn ? Color(nsColor: controller.color.nsColor).opacity(0.6) : .clear, radius: 8)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(controller.isOn ? (controller.activePreset.map { "\($0.emoji) \($0.name)" } ?? "Custom") : "Off")
+                    Text(headline)
                         .font(.headline)
                     Text(signSummary).font(.caption).foregroundStyle(.secondary)
                 }
@@ -104,9 +104,20 @@ struct StatusHeader: View {
                     if !editing { controller.commitBrightness() }
                 }
                 Image(systemName: "sun.max")
+                Toggle(isOn: Binding(get: { controller.isCycling }, set: { controller.setCycling($0) })) {
+                    Image(systemName: "rainbow")
+                }
+                .toggleStyle(.button)
+                .help("Cycle through colors")
             }
         }
         .padding()
+    }
+
+    private var headline: String {
+        guard controller.isOn else { return "Off" }
+        if controller.isCycling { return "🌈 Color cycle" }
+        return controller.activePreset.map { "\($0.emoji) \($0.name)" } ?? "Custom"
     }
 
     private var signSummary: String {

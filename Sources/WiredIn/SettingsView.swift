@@ -45,7 +45,6 @@ private struct GeneralSettings: View {
 
 private struct DevicesSettings: View {
     @Environment(SignController.self) private var controller
-    @State private var mode = 0
 
     var body: some View {
         @Bindable var controller = controller
@@ -69,16 +68,6 @@ private struct DevicesSettings: View {
                 Toggle("Look for Bluetooth signs", isOn: $controller.bluetoothEnabled)
             } footer: {
                 Text("Bluetooth support is untested; the original app shipped it but most signs are USB.")
-            }
-            Section {
-                Picker("Firmware mode", selection: $mode) {
-                    ForEach(0..<10) { Text("\($0)").tag($0) }
-                }
-                .onChange(of: mode) { controller.setMode(mode) }
-            } header: {
-                Text("Advanced")
-            } footer: {
-                Text("The firmware accepts `!mode0;`–`!mode9;`, but what each mode does is unknown.")
             }
         }
         .formStyle(.grouped)

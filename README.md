@@ -14,6 +14,7 @@ intentionally not included.
 - Finds USB serial signs automatically (and Bluetooth signs, optionally)
 - Presets with name, emoji, color and on/off; drag-free one-click switching
 - Live color picker and brightness slider
+- Color cycle mode (🌈 button, menu bar, or `wired mode cycle`)
 - Menu bar extra and global hotkeys (⌃⌥⌘1–9 presets, ⌃⌥⌘0 off, ⌃⌥⌘W window)
 - `wiredin://` URLs, compatible with the original shared preset links
 - `wired` command line tool
@@ -41,6 +42,7 @@ swift run wired list
 swift run wired preset "Wired In"
 swift run wired color '#00FF88'
 swift run wired brightness 40
+swift run wired mode cycle      # or: solid
 swift run wired off
 ```
 
@@ -72,5 +74,4 @@ docs/PROTOCOL.md     the reverse-engineered protocol
 
 ## Status
 
-Verified working with a USB sign (firmware 0.4). The meaning of the firmware's
-`!modeN;` values is still unknown; see docs/PROTOCOL.md.
+Verified working with a USB sign (firmware 0.4).

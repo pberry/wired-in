@@ -44,7 +44,7 @@ Every command starts with `!` and ends with `;`. Numbers are zero-padded.
 | Color    | `!rgb%03i%03i%03i;`        | Serial. Each channel 0–255, e.g. `!rgb255000000;` |
 | Color    | `!rgb255%03i%03i%03i;`     | Bluetooth variant (literal `255` prefix)          |
 | Brightness | `!brt%03i;`              | 0–255. App clamps a 0.0–1.0 float, then ×255.      |
-| Mode     | `!mode%1i;`                | Single digit. Meaning of modes unknown **(unverified)**. |
+| Mode     | `!mode%1i;`                | `0` solid, `1` color cycle. See below.            |
 
 Float → integer conversion truncates (`cvttsd2si`), i.e. `Int(value * 255)`.
 Colors are converted to the generic RGB color space before conversion.
@@ -52,6 +52,20 @@ Colors are converted to the generic RGB color space before conversion.
 Serial set-commands (`on`, `rgb`, `brt`, `mode`) expect a status packet back
 (0.5 s timeout for color/brightness, 0.2 s for on/mode). A color change
 cancels all queued requests first, so dragging a color picker doesn't back up.
+
+## Modes
+
+Tested on firmware 0.4:
+
+| Mode | Behavior                                                          |
+|------|-------------------------------------------------------------------|
+| `0`  | Solid: shows the color set with `!rgb`.                           |
+| `1`  | Color cycle: quickly cycles through colors. Status `c:` reports the current color of the cycle. |
+| `2`, `5`, `9` | Ignored; the sign stays in its current mode and replies with status. |
+| `3`  | No reply.                                                         |
+
+Switching from `1` back to `0` leaves the sign on whatever color the cycle had
+reached, so the host must re-send `!rgb…;` afterwards.
 
 ## Responses (sign → host)
 

@@ -14,6 +14,7 @@ struct MenuBarView: View {
             }
             .keyboardShortcut(KeyEquivalent(Character("\(index + 1)")), modifiers: [.control, .option, .command])
         }
+        Toggle("Color Cycle", isOn: Binding(get: { controller.isCycling }, set: { controller.setCycling($0) }))
         Divider()
         Button("Turn Off") { controller.turnOff() }
             .keyboardShortcut("0", modifiers: [.control, .option, .command])

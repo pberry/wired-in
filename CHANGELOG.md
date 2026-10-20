@@ -10,8 +10,16 @@ All notable changes to this project are documented here. The format follows
 - Protocol documentation confirmed against real hardware (firmware 0.4):
   responses include spaces after `:`/`,` and a trailing NUL byte.
 - Added tests using packets captured from a real sign.
+- `!mode` is now typed (`SignMode.solid` / `.colorCycle`); the only modes the
+  firmware supports are 0 and 1.
+- `wired mode` takes `solid` or `cycle` instead of 0–9.
+
+### Added
+- Color cycle toggle in the main window and menu bar. Leaving the cycle, or
+  applying a preset or color, switches back to solid and re-sends the color.
 
 ### Removed
+- The 0–9 firmware mode picker in Settings → Devices.
 - Slack and IFTTT integrations, and the Keychain helper they used.
 - Slack emoji field on presets (existing `slackEmoji` keys in saved presets
   are ignored).

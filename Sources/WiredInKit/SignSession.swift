@@ -117,7 +117,7 @@ public actor SignSession {
     }
 
     @discardableResult
-    public func setMode(_ mode: Int, timeout: Duration = .milliseconds(500)) async throws -> SignStatus {
+    public func setMode(_ mode: SignMode, timeout: Duration = .milliseconds(500)) async throws -> SignStatus {
         try await statusRequest(.mode(mode), timeout: timeout)
     }
 

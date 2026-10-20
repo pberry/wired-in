@@ -68,9 +68,9 @@ final class FakeSign: SignTransport, @unchecked Sendable {
         #expect(!status.isOn)
         status = try await session.setBrightness(0.5)
         #expect(status.brightness == 127.0 / 255)
-        status = try await session.setMode(4)
-        #expect(status.mode == 4)
-        #expect(sign.sent == ["!rgb010020030;", "!on0;", "!brt127;", "!mode4;"])
+        status = try await session.setMode(.colorCycle)
+        #expect(status.mode == 1)
+        #expect(sign.sent == ["!rgb010020030;", "!on0;", "!brt127;", "!mode1;"])
         #expect(await session.lastStatus == status)
     }
 

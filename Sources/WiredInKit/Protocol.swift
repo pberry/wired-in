@@ -51,6 +51,22 @@ public enum SignTransportKind: String, Codable, Sendable {
     case bluetooth
 }
 
+/// Firmware display modes. Confirmed on firmware 0.4; other values are ignored by the sign.
+public enum SignMode: Int, CaseIterable, Sendable {
+    /// Shows the color set with `!rgb`.
+    case solid = 0
+    /// Cycles quickly through the colors. Switching back to `.solid` leaves the
+    /// sign on whatever color the cycle reached, so re-send the color afterwards.
+    case colorCycle = 1
+
+    public var name: String {
+        switch self {
+        case .solid: "Solid"
+        case .colorCycle: "Color cycle"
+        }
+    }
+}
+
 /// Commands the host can send to a sign. See docs/PROTOCOL.md.
 public enum SignCommand: Equatable, Sendable {
     case info
@@ -59,7 +75,7 @@ public enum SignCommand: Equatable, Sendable {
     case color(SignColor)
     /// 0.0–1.0, clamped.
     case brightness(Double)
-    case mode(Int)
+    case mode(SignMode)
 
     public func encoded(for kind: SignTransportKind = .serial) -> String {
         switch self {
@@ -76,7 +92,7 @@ public enum SignCommand: Equatable, Sendable {
         case .brightness(let value):
             return String(format: "!brt%03d;", SignColor.byte(value))
         case .mode(let mode):
-            return "!mode\(min(max(mode, 0), 9));"
+            return "!mode\(mode.rawValue);"
         }
     }
 

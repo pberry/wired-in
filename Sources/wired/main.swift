@@ -10,7 +10,7 @@ let usage = """
       wired on | off                     Turn the sign on or off
       wired color <#RRGGBB>              Set the color
       wired brightness <0-100>           Set brightness (percent)
-      wired mode <0-9>                   Set firmware mode
+      wired mode <solid|cycle>           Solid color, or cycle through colors
       wired preset <name|emoji|#color>   Apply a saved preset
       wired presets                      List saved presets
       wired raw '<!command;>'            Send a raw protocol command (debugging)
@@ -83,7 +83,8 @@ func run(_ arguments: [String]) async throws {
         }
         try await eachSign(port: port) { try await $0.setBrightness(pct / 100) }
     case "mode":
-        guard let mode = Int(value), (0...9).contains(mode) else { throw CLIError(description: "Mode must be 0–9") }
+        let modes: [String: SignMode] = ["solid": .solid, "0": .solid, "cycle": .colorCycle, "1": .colorCycle]
+        guard let mode = modes[value.lowercased()] else { throw CLIError(description: "Mode must be solid or cycle") }
         try await eachSign(port: port) { try await $0.setMode(mode) }
     case "presets":
         for preset in PresetStore().load() {

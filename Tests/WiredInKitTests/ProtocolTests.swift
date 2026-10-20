@@ -8,7 +8,8 @@ import Testing
         #expect(SignCommand.status.encoded() == "!stat;")
         #expect(SignCommand.power(true).encoded() == "!on1;")
         #expect(SignCommand.power(false).encoded() == "!on0;")
-        #expect(SignCommand.mode(3).encoded() == "!mode3;")
+        #expect(SignCommand.mode(.solid).encoded() == "!mode0;")
+        #expect(SignCommand.mode(.colorCycle).encoded() == "!mode1;")
     }
 
     @Test func colorIsZeroPaddedAndTruncated() {
@@ -26,11 +27,6 @@ import Testing
         #expect(SignCommand.brightness(0.1).encoded() == "!brt025;")
         #expect(SignCommand.brightness(2).encoded() == "!brt255;")
         #expect(SignCommand.brightness(-1).encoded() == "!brt000;")
-    }
-
-    @Test func modeIsSingleDigit() {
-        #expect(SignCommand.mode(42).encoded() == "!mode9;")
-        #expect(SignCommand.mode(-1).encoded() == "!mode0;")
     }
 }
 

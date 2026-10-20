@@ -42,6 +42,7 @@ final class SignController {
     /// The state the user last asked for, shown even before any sign responds.
     private(set) var color: SignColor = .white
     private(set) var isOn = true
+    private(set) var isCycling = false
     var brightness: Double {
         didSet { UserDefaults.standard.set(brightness, forKey: Keys.brightness) }
     }
@@ -145,16 +146,22 @@ final class SignController {
             guard let stream = entry?.session.statusUpdates else { return }
             for await status in stream {
                 entry?.status = status
+                if status.mode == SignMode.colorCycle.rawValue { self?.isCycling = true }
             }
             self?.signs.removeAll { $0 === entry }
         }
         // Bring a newly attached sign in line with the current state.
         Task {
-            if entry.kind == .serial { _ = try? await entry.session.status() }
+            var signIsCycling = false
+            if entry.kind == .serial, let status = try? await entry.session.status() {
+                signIsCycling = status.mode == SignMode.colorCycle.rawValue
+                if signIsCycling { isCycling = true }
+            }
+            let (brightness, color, isOn, skipColor) = (brightness, color, isOn, signIsCycling)
             await push(to: entry.session, kind: entry.kind) { session in
-                try await session.setBrightness(self.brightness)
-                try await session.setColor(self.color)
-                try await session.setPower(self.isOn)
+                try await session.setBrightness(brightness)
+                if !skipColor { try await session.setColor(color) }
+                try await session.setPower(isOn)
             }
         }
     }
@@ -165,7 +172,10 @@ final class SignController {
         activePresetID = preset.id
         color = preset.color
         isOn = preset.isOn
+        let wasCycling = isCycling
+        isCycling = false
         broadcast { [brightness] session in
+            if wasCycling { try await session.setMode(.solid) }
             try await session.setColor(preset.color)
             try await session.setBrightness(brightness)
             try await session.setPower(preset.isOn)
@@ -194,10 +204,15 @@ final class SignController {
         color = newColor
         activePresetID = nil
         colorTask?.cancel()
+        let wasCycling = isCycling
+        isCycling = false
         colorTask = Task {
             try? await Task.sleep(for: .milliseconds(40))
             guard !Task.isCancelled else { return }
-            broadcast { try await $0.setColor(newColor) }
+            broadcast { session in
+                if wasCycling { try await session.setMode(.solid) }
+                try await session.setColor(newColor)
+            }
         }
     }
 
@@ -205,8 +220,18 @@ final class SignController {
         broadcast { [brightness] in try await $0.setBrightness(brightness) }
     }
 
-    func setMode(_ mode: Int) {
-        broadcast { try await $0.setMode(mode) }
+    /// Leaving the cycle freezes the sign on a random color, so the chosen color is re-sent.
+    func setCycling(_ cycling: Bool) {
+        isCycling = cycling
+        if cycling { activePresetID = nil }
+        broadcast { [color] session in
+            if cycling {
+                try await session.setMode(.colorCycle)
+            } else {
+                try await session.setMode(.solid)
+                try await session.setColor(color)
+            }
+        }
     }
 
     /// Runs commands against every sign. BLE signs don't answer, so those are fire-and-forget.

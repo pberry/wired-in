@@ -17,6 +17,10 @@ All notable changes to this project are documented here. The format follows
   colors it was shown as new picks, which switched the sign back to solid.
   Picks within 2/255 per channel of the displayed color are now ignored
   (`SignColor.isClose(to:)`).
+- After a manual pick, starting the cycle again still failed: the attached
+  color panel echoed cycle colors back late, after the cycle had moved on.
+  The header's picker is now an `NSColorWell` wrapper (`SignColorWell`) that
+  detaches from the panel when cycling starts and only reports user picks.
 
 ### Fixed
 - The CLI and the app no longer fight over the serial port (#4). Ports are

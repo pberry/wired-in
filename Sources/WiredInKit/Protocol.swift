@@ -35,6 +35,13 @@ public struct SignColor: Codable, Hashable, Sendable {
         return String(format: "#%02X%02X%02X", b.red, b.green, b.blue)
     }
 
+    /// True when every channel is within `tolerance` of `other` (0–255 scale).
+    public func isClose(to other: SignColor, tolerance: Int = 2) -> Bool {
+        let (a, b) = (bytes, other.bytes)
+        return abs(a.red - b.red) <= tolerance && abs(a.green - b.green) <= tolerance
+            && abs(a.blue - b.blue) <= tolerance
+    }
+
     static func byte(_ value: Double) -> Int {
         Int(min(max(value, 0), 1) * 255)
     }

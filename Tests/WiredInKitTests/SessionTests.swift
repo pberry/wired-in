@@ -40,6 +40,9 @@ final class FakeSign: SignTransport, @unchecked Sendable {
             brightness = Int(body.dropFirst(3))!
         } else if body.hasPrefix("mode") {
             mode = Int(body.dropFirst(4))!
+        } else if body == "stat", mode == 1 {
+            // The cycle moves on between polls.
+            color = ((color.0 + 10) % 256, color.1, color.2)
         }
         reply = body == "info" ? reply : statusPacket
         // Deliver in two chunks to exercise framing.
@@ -120,6 +123,32 @@ final class FakeSign: SignTransport, @unchecked Sendable {
         sign.pressButton()
         #expect(await updates.next() == StatusUpdate(status: SignStatus(color: .red, brightness: 1, isOn: false), isUnsolicited: true))
         #expect(await session.lastStatus?.isOn == false)
+    }
+
+    @Test func pollingFollowsTheColorCycle() async throws {
+        let sign = FakeSign()
+        let session = SignSession(transport: sign)
+        try await session.setMode(.colorCycle)
+        var updates = session.statusUpdates.makeAsyncIterator()
+        _ = await updates.next()  // reply to !mode1;
+
+        let poll = Task { await session.pollStatus(every: .milliseconds(5)) }
+        var reds: [Int] = []
+        for _ in 0..<3 {
+            if let update = await updates.next() { reds.append(update.status.color.bytes.red) }
+        }
+        poll.cancel()
+        await poll.value
+        #expect(reds == [10, 20, 30])
+        #expect(sign.sent.filter { $0 == "!stat;" }.count >= 3)
+    }
+
+    @Test func pollingStopsWhenSessionCloses() async {
+        let session = SignSession(transport: FakeSign())
+        let poll = Task { await session.pollStatus(every: .milliseconds(5)) }
+        try? await Task.sleep(for: .milliseconds(20))
+        await session.close()
+        await poll.value
     }
 
     @Test func bluetoothDialect() async throws {

@@ -6,6 +6,12 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- While the sign is in color cycle mode, the app's color picker and status
+  light follow the color the sign is showing. The app polls `!stat;` on one
+  serial sign every 100 ms (`SignSession.pollStatus(every:)`) while cycling.
+  Your chosen color is kept and re-sent when you leave the cycle.
+
 ### Fixed
 - The CLI and the app no longer fight over the serial port (#4). Ports are
   opened exclusively (`TIOCEXCL`); a second opener gets `SignError.portBusy`.

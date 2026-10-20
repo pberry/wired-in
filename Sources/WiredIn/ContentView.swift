@@ -79,10 +79,10 @@ struct StatusHeader: View {
         VStack(spacing: 12) {
             HStack(spacing: 12) {
                 Circle()
-                    .fill(Color(nsColor: controller.color.nsColor).opacity(controller.isOn ? 1 : 0.15))
+                    .fill(Color(nsColor: controller.displayColor.nsColor).opacity(controller.isOn ? 1 : 0.15))
                     .overlay(Circle().strokeBorder(.quaternary))
                     .frame(width: 44, height: 44)
-                    .shadow(color: controller.isOn ? Color(nsColor: controller.color.nsColor).opacity(0.6) : .clear, radius: 8)
+                    .shadow(color: controller.isOn ? Color(nsColor: controller.displayColor.nsColor).opacity(0.6) : .clear, radius: 8)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(headline)
                         .font(.headline)
@@ -95,7 +95,7 @@ struct StatusHeader: View {
             }
             HStack {
                 ColorPicker("Color", selection: Binding(
-                    get: { Color(nsColor: controller.color.nsColor) },
+                    get: { Color(nsColor: controller.displayColor.nsColor) },
                     set: { controller.setColor(SignColor(NSColor($0))) }
                 ), supportsOpacity: false)
                 .labelsHidden()

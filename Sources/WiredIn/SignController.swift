@@ -33,7 +33,7 @@ final class SignEntry: Identifiable {
 final class SignController {
     static let shared = SignController()
 
-    private(set) var signs: [SignEntry] = []
+    private(set) var signs: [SignEntry] = [] { didSet { updateCyclePolling() } }
     var presets: [Preset] { didSet { savePresets() } }
     private(set) var activePresetID: Preset.ID?
     private(set) var isScanning = false
@@ -42,7 +42,11 @@ final class SignController {
     /// The state the user last asked for, shown even before any sign responds.
     private(set) var color: SignColor = .white
     private(set) var isOn = true
-    private(set) var isCycling = false
+    private(set) var isCycling = false { didSet { updateCyclePolling() } }
+    /// The color the sign last reported while cycling.
+    private(set) var cycleColor: SignColor?
+    /// What the sign is showing: the cycle's current color, or the chosen one.
+    var displayColor: SignColor { isCycling ? cycleColor ?? color : color }
     var brightness: Double {
         didSet { UserDefaults.standard.set(brightness, forKey: Keys.brightness) }
     }
@@ -77,6 +81,7 @@ final class SignController {
     private var colorTask: Task<Void, Never>?
     private var bluetooth: BluetoothScanner?
     private var controlServer: ControlServer?
+    private var cyclePoll: (signID: String, task: Task<Void, Never>)?
 
     private init() {
         let defaults = UserDefaults.standard
@@ -160,6 +165,10 @@ final class SignController {
             guard let stream = entry?.session.statusUpdates else { return }
             for await update in stream {
                 entry?.status = update.status
+                if let self, isCycling, cyclePoll?.signID == entry?.id,
+                   update.status.mode == SignMode.colorCycle.rawValue {
+                    cycleColor = update.status.color
+                }
                 if update.isUnsolicited { self?.signChangedItself(update.status) }
             }
             self?.signs.removeAll { $0 === entry }
@@ -185,6 +194,21 @@ final class SignController {
     private func signChangedItself(_ status: SignStatus) {
         isOn = status.isOn
         isCycling = status.mode == SignMode.colorCycle.rawValue
+    }
+
+    /// While cycling, polls one serial sign so the UI can show the cycle's color.
+    /// BLE signs don't answer, and separate signs cycle out of step, so one is enough.
+    private func updateCyclePolling() {
+        let target = isCycling ? signs.first { $0.kind == .serial } : nil
+        guard target?.id != cyclePoll?.signID else { return }
+        cyclePoll?.task.cancel()
+        cyclePoll = nil
+        guard let target else {
+            cycleColor = nil
+            return
+        }
+        let session = target.session
+        cyclePoll = (target.id, Task { await session.pollStatus(every: .milliseconds(100)) })
     }
 
     // MARK: - Control

@@ -48,6 +48,12 @@ final class FakeSign: SignTransport, @unchecked Sendable {
         continuation.yield(Data((reply[split...] + "\r\n").utf8))
     }
 
+    /// The physical on/off button: the firmware toggles power and reports it unprompted.
+    func pressButton() {
+        on.toggle()
+        continuation.yield(Data((statusPacket + "\0").utf8))
+    }
+
     func close() { continuation.finish() }
 }
 
@@ -101,6 +107,19 @@ final class FakeSign: SignTransport, @unchecked Sendable {
         try? await Task.sleep(for: .milliseconds(20))
         sign.close()
         await #expect(throws: SignError.closed) { try await pending.value }
+    }
+
+    @Test func buttonPressIsReportedAsUnsolicited() async throws {
+        let sign = FakeSign()
+        let session = SignSession(transport: sign)
+        var updates = session.statusUpdates.makeAsyncIterator()
+
+        try await session.setColor(.red)
+        #expect(await updates.next() == StatusUpdate(status: SignStatus(color: .red, brightness: 1, isOn: true), isUnsolicited: false))
+
+        sign.pressButton()
+        #expect(await updates.next() == StatusUpdate(status: SignStatus(color: .red, brightness: 1, isOn: false), isUnsolicited: true))
+        #expect(await session.lastStatus?.isOn == false)
     }
 
     @Test func bluetoothDialect() async throws {

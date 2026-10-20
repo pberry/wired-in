@@ -14,6 +14,11 @@ All notable changes to this project are documented here. The format follows
   firmware supports are 0 and 1.
 - `wired mode` takes `solid` or `cycle` instead of 0–9.
 
+### Fixed
+- The app now follows changes made with the sign's own on/off button, which
+  the firmware reports with an unprompted status packet. `SignSession`'s
+  `statusUpdates` now yields `StatusUpdate` values flagged `isUnsolicited`.
+
 ### Added
 - Color cycle toggle in the main window and menu bar. Leaving the cycle, or
   applying a preset or color, switches back to solid and re-sends the color.

@@ -144,9 +144,9 @@ final class SignController {
         // Track status, and drop the sign when its connection ends.
         Task { [weak self, weak entry] in
             guard let stream = entry?.session.statusUpdates else { return }
-            for await status in stream {
-                entry?.status = status
-                if status.mode == SignMode.colorCycle.rawValue { self?.isCycling = true }
+            for await update in stream {
+                entry?.status = update.status
+                if update.isUnsolicited { self?.signChangedItself(update.status) }
             }
             self?.signs.removeAll { $0 === entry }
         }
@@ -164,6 +164,13 @@ final class SignController {
                 try await session.setPower(isOn)
             }
         }
+    }
+
+    /// Follows changes made on the sign itself, such as its on/off button.
+    /// Replies to our own commands are ignored: mid-sequence they can show stale state.
+    private func signChangedItself(_ status: SignStatus) {
+        isOn = status.isOn
+        isCycling = status.mode == SignMode.colorCycle.rawValue
     }
 
     // MARK: - Control

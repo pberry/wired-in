@@ -72,6 +72,12 @@ reached, so the host must re-send `!rgb…;` afterwards.
 Responses start with `$` and end with `;`, followed by a NUL (`0x00`) byte.
 No output is sent on port open (no boot banner).
 
+The sign also sends a status packet **unprompted** when its physical button
+(next to the USB port) is pressed. The button toggles power (`o:`); it is
+handled by the firmware and does not reset the microcontroller. A host should
+treat status packets that arrive with no pending request as state changes made
+on the device.
+
 ### Info
 
 ```

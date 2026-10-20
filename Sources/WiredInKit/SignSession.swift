@@ -25,15 +25,29 @@ public enum SignError: Error, Equatable, LocalizedError {
     }
 }
 
+/// A status packet, and whether the sign sent it on its own.
+public struct StatusUpdate: Equatable, Sendable {
+    public var status: SignStatus
+    /// True when no request was waiting for it, e.g. the sign's own on/off
+    /// button was pressed.
+    public var isUnsolicited: Bool
+
+    public init(status: SignStatus, isUnsolicited: Bool) {
+        self.status = status
+        self.isUnsolicited = isUnsolicited
+    }
+}
+
 /// Request/response conversation with one sign.
 ///
-/// Every set-command is answered with a status packet, so the latest status is
-/// tracked here and published through `statusUpdates`.
+/// Every set-command is answered with a status packet, and the sign also sends
+/// one by itself when its button is pressed. The latest status is tracked here
+/// and every packet is published through `statusUpdates`.
 public actor SignSession {
     public nonisolated let transport: SignTransport
     public private(set) var info: SignInfo?
     public private(set) var lastStatus: SignStatus?
-    public nonisolated let statusUpdates: AsyncStream<SignStatus>
+    public nonisolated let statusUpdates: AsyncStream<StatusUpdate>
 
     private enum Expecting { case info, status }
     private struct Waiter {
@@ -46,11 +60,11 @@ public actor SignSession {
     private var framer = PacketFramer()
     private var readerTask: Task<Void, Never>?
     private var isClosed = false
-    private let statusContinuation: AsyncStream<SignStatus>.Continuation
+    private let statusContinuation: AsyncStream<StatusUpdate>.Continuation
 
     public init(transport: SignTransport) {
         self.transport = transport
-        (statusUpdates, statusContinuation) = AsyncStream.makeStream(bufferingPolicy: .bufferingNewest(1))
+        (statusUpdates, statusContinuation) = AsyncStream.makeStream()
     }
 
     deinit {
@@ -167,15 +181,15 @@ public actor SignSession {
             let expecting: Expecting
             switch response {
             case .info: expecting = .info
-            case .status(let status):
-                lastStatus = status
-                statusContinuation.yield(status)
-                expecting = .status
+            case .status: expecting = .status
             case .unknown: continue
             }
-            if let index = waiters.firstIndex(where: { $0.expecting == expecting }) {
-                waiters.remove(at: index).continuation.resume(returning: response)
+            let waiter = waiters.firstIndex { $0.expecting == expecting }.map { waiters.remove(at: $0) }
+            if case .status(let status) = response {
+                lastStatus = status
+                statusContinuation.yield(StatusUpdate(status: status, isUnsolicited: waiter == nil))
             }
+            waiter?.continuation.resume(returning: response)
         }
     }
 

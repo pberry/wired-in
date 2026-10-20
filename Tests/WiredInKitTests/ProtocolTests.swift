@@ -105,6 +105,13 @@ import Testing
         #expect(status == SignStatus(color: .red, brightness: 1, isOn: true, mode: 0))
     }
 
+    /// Unprompted packets sent while the sign's button was pressed (off, then on).
+    @Test func parsesCapturedButtonPresses() throws {
+        var framer = PacketFramer()
+        let packets = framer.append(Data("$c: 255, 000, 000/o: 0/b: 255/m: 0;\0$c: 255, 000, 000/o: 1/b: 255/m: 0;\0".utf8))
+        #expect(packets.compactMap { SignStatus(response: $0)?.isOn } == [false, true])
+    }
+
     @Test func capturedStatusLengthMatchesOriginalMatcher() {
         // The 2018 app only accepted status packets of 34–35 bytes; the NUL is outside the packet.
         #expect(Self.status.count - 1 == 35)

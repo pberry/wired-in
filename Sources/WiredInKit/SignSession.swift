@@ -63,6 +63,10 @@ public actor SignSession {
     private var framer = PacketFramer()
     private var readerTask: Task<Void, Never>?
     private var isClosed = false
+    /// The last queued request. Requests go out one at a time, like the original
+    /// app's ORSSerialPort queue: the firmware drops a command that arrives while
+    /// it is still answering the previous one.
+    private var queueTail: Task<Void, Never>?
     private let statusContinuation: AsyncStream<StatusUpdate>.Continuation
 
     public init(transport: SignTransport) {
@@ -133,9 +137,31 @@ public actor SignSession {
         try await statusRequest(.brightness(value), timeout: timeout)
     }
 
+    /// The firmware now and then ignores `!mode` without replying, so serial signs
+    /// get up to `attempts` tries until the reply shows the new mode. BLE signs
+    /// never reply, so they get one.
     @discardableResult
-    public func setMode(_ mode: SignMode, timeout: Duration = .milliseconds(500)) async throws -> SignStatus {
-        try await statusRequest(.mode(mode), timeout: timeout)
+    public func setMode(_ mode: SignMode, timeout: Duration = .milliseconds(500), attempts: Int = 3) async throws -> SignStatus {
+        let tries = transport.kind == .bluetooth ? 1 : max(attempts, 1)
+        for _ in 0..<tries {
+            do {
+                let status = try await statusRequest(.mode(mode), timeout: timeout)
+                if status.mode == mode.rawValue { return status }
+            } catch SignError.timeout {
+                continue
+            }
+        }
+        throw SignError.timeout
+    }
+
+    /// Requests status repeatedly until the calling task is cancelled or the session
+    /// closes. Replies are published through `statusUpdates`. Used to follow the
+    /// color cycle, which the sign only reveals in status packets.
+    public func pollStatus(every interval: Duration, timeout: Duration = .milliseconds(200)) async {
+        while !Task.isCancelled, !isClosed {
+            _ = try? await status(timeout: timeout)
+            try? await Task.sleep(for: interval)
+        }
     }
 
     /// Fires a command without waiting for the reply (BLE writes are not acknowledged).
@@ -155,6 +181,18 @@ public actor SignSession {
     }
 
     private func request(_ command: SignCommand, expecting: Expecting, timeout: Duration) async throws -> SignResponse {
+        let previous = queueTail
+        let exchange = Task { [weak self] () async throws -> SignResponse in
+            await previous?.value
+            guard let self else { throw SignError.closed }
+            return try await self.exchange(command, expecting: expecting, timeout: timeout)
+        }
+        queueTail = Task { _ = try? await exchange.value }
+        return try await exchange.value
+    }
+
+    /// Sends one command and waits for its reply.
+    private func exchange(_ command: SignCommand, expecting: Expecting, timeout: Duration) async throws -> SignResponse {
         guard !isClosed else { throw SignError.closed }
         start()
         let id = UUID()

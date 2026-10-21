@@ -6,7 +6,21 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- While the sign is in color cycle mode, the status light in the window's
+  header follows the color the sign is showing. The color picker keeps showing
+  your chosen color, since feeding it live colors made it end the cycle. The
+  app polls `!stat;` on one serial sign every 100 ms
+  (`SignSession.pollStatus(every:)`) while cycling. Your chosen color is
+  re-sent when you leave the cycle.
+
 ### Fixed
+- `SignSession` now sends one request at a time and waits for each reply (or
+  its timeout), like the original app. The firmware drops commands that arrive
+  while it is answering the previous one; with the status poll running this
+  meant color cycle could not be turned back on.
+- `setMode` retries up to three times on serial signs: the firmware
+  occasionally ignores `!mode` without replying.
 - The CLI and the app no longer fight over the serial port (#4). Ports are
   opened exclusively (`TIOCEXCL`); a second opener gets `SignError.portBusy`.
   While the app runs, `wired` routes commands through it over a Unix socket

@@ -10,6 +10,8 @@ final class FakeSign: SignTransport, @unchecked Sendable {
     private let lock = NSLock()
     private(set) var sent: [String] = []
     var silent = false
+    /// Ignores this many `!mode` commands, as the real firmware sometimes does.
+    var modeCommandsToDrop = 0
     var color = (0, 0, 0), on = true, brightness = 255, mode = 0
 
     init(kind: SignTransportKind = .serial) {
@@ -26,6 +28,10 @@ final class FakeSign: SignTransport, @unchecked Sendable {
         lock.withLock { sent.append(command) }
         guard !silent else { return }
         let body = command.dropFirst().dropLast()
+        if body.hasPrefix("mode"), modeCommandsToDrop > 0 {
+            modeCommandsToDrop -= 1
+            return
+        }
         var reply = statusPacket
         if body == "info" {
             reply = "$WiredIn:1.1/uid:FAKE01;"
@@ -40,6 +46,9 @@ final class FakeSign: SignTransport, @unchecked Sendable {
             brightness = Int(body.dropFirst(3))!
         } else if body.hasPrefix("mode") {
             mode = Int(body.dropFirst(4))!
+        } else if body == "stat", mode == 1 {
+            // The cycle moves on between polls.
+            color = ((color.0 + 10) % 256, color.1, color.2)
         }
         reply = body == "info" ? reply : statusPacket
         // Deliver in two chunks to exercise framing.
@@ -109,6 +118,37 @@ final class FakeSign: SignTransport, @unchecked Sendable {
         await #expect(throws: SignError.closed) { try await pending.value }
     }
 
+    @Test func setModeRetriesWhenIgnored() async throws {
+        let sign = FakeSign()
+        sign.modeCommandsToDrop = 2
+        let session = SignSession(transport: sign)
+        let status = try await session.setMode(.colorCycle, timeout: .milliseconds(30))
+        #expect(status.mode == 1)
+        #expect(sign.sent == ["!mode1;", "!mode1;", "!mode1;"])
+    }
+
+    @Test func setModeGivesUpAfterAttempts() async {
+        let sign = FakeSign()
+        sign.modeCommandsToDrop = 3
+        let session = SignSession(transport: sign)
+        await #expect(throws: SignError.timeout) {
+            try await session.setMode(.solid, timeout: .milliseconds(20))
+        }
+        #expect(sign.sent.count == 3)
+    }
+
+    @Test func requestsWaitForThePreviousReply() async {
+        let sign = FakeSign()
+        sign.silent = true
+        let session = SignSession(transport: sign)
+        async let first = try? session.status(timeout: .milliseconds(60))
+        async let second = try? session.setPower(false, timeout: .milliseconds(60))
+        try? await Task.sleep(for: .milliseconds(30))
+        #expect(sign.sent.count == 1)
+        _ = await (first, second)
+        #expect(sign.sent.count == 2)
+    }
+
     @Test func buttonPressIsReportedAsUnsolicited() async throws {
         let sign = FakeSign()
         let session = SignSession(transport: sign)
@@ -120,6 +160,32 @@ final class FakeSign: SignTransport, @unchecked Sendable {
         sign.pressButton()
         #expect(await updates.next() == StatusUpdate(status: SignStatus(color: .red, brightness: 1, isOn: false), isUnsolicited: true))
         #expect(await session.lastStatus?.isOn == false)
+    }
+
+    @Test func pollingFollowsTheColorCycle() async throws {
+        let sign = FakeSign()
+        let session = SignSession(transport: sign)
+        try await session.setMode(.colorCycle)
+        var updates = session.statusUpdates.makeAsyncIterator()
+        _ = await updates.next()  // reply to !mode1;
+
+        let poll = Task { await session.pollStatus(every: .milliseconds(5)) }
+        var reds: [Int] = []
+        for _ in 0..<3 {
+            if let update = await updates.next() { reds.append(update.status.color.bytes.red) }
+        }
+        poll.cancel()
+        await poll.value
+        #expect(reds == [10, 20, 30])
+        #expect(sign.sent.filter { $0 == "!stat;" }.count >= 3)
+    }
+
+    @Test func pollingStopsWhenSessionCloses() async {
+        let session = SignSession(transport: FakeSign())
+        let poll = Task { await session.pollStatus(every: .milliseconds(5)) }
+        try? await Task.sleep(for: .milliseconds(20))
+        await session.close()
+        await poll.value
     }
 
     @Test func bluetoothDialect() async throws {
